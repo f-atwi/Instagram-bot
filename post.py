@@ -6,7 +6,7 @@ from textwrap import wrap
 import logging
 from pathlib import Path
 from glob import glob
-
+from instagram_private_api import Client
 logging.basicConfig(
     format='%(asctime)s: %(funcName)s: %(levelname)s: %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,32 +26,43 @@ class Post:
             None if font_file_path is None else Path(font_file_path), font_size)
         self.bounding_box = self._define_bounding_box(bounding_box, size)
         self.message = self._format_message(bounding_box, message, self.font)
-        self._X, self._Y = self._center(
-            bounding_box, len(self.message), font_size)
-        self.leading = font_size+padding
-        self._draw()
+        if self._is_text():
+            self._X, self._Y = self._center(
+                bounding_box, len(self.message), font_size)
+            self.leading = font_size+padding
+            self._draw()
 
     def _define_bounding_box(self, bounding_box, size) -> List:
         if bounding_box is None:
             bounding_box = [0.05*size, 0.1*size, 0.95*size, 0.9*size]
         return bounding_box
 
-    def _format_message(self, bounding_box, message, font) -> List:
-        width = bounding_box[2]-bounding_box[0]
-        pars = [' '.join(par.split()) for par in message.split('\n') if par]
-        i = 1
-        while True:
-            longest = max([max(wrap(par, i), key=len)
-                          for par in pars], key=len)
-            if font.getsize(longest)[0] > width:
-                return [line for par in pars for line in wrap(par, i-2)]
-            i += 1
+    def _format_message(self, bounding_box, message, font):
+        pars = [' '.join(par.split())
+                for par in message.split('\n') if par.strip()]
+        if pars and all(pars):
+            width = bounding_box[2]-bounding_box[0]
+            max_size = ' '
+            i = 1
+            while True:
+                longest = max([max(wrap(par, i), key=len)
+                               for par in pars], key=len)
+                if font.getsize(longest)[0] > width or font.getsize(max_size)[0] > width:
+                    return [line for par in pars for line in wrap(par, i-2)]
+                i += 1
+                max_size += ' '
+        return []
 
     def _center(self, bounding_box, lines, font_size) -> tuple[int, int]:
         X = (bounding_box[2] - bounding_box[0])/2 + bounding_box[0]
         Y = (bounding_box[3] - bounding_box[1])/2 + \
             bounding_box[1] - (lines-1)*font_size/2
         return X, Y
+
+    def _is_text(self) -> bool:
+        if not self.message:
+            logger.info("No text")
+        return bool(self.message)
 
     def _is_valid(self) -> bool:
         if self._Y < self.bounding_box[1]:
@@ -98,8 +109,8 @@ class Post:
     def show(self):
         self.image.show()
 
-    def post(api):
-        api.post
+    def get_post(self):
+        return self.image
 
     def save(self):
         path = Path("posts")
@@ -111,13 +122,15 @@ class Post:
         path /= Path(f'posts_{i}.png')
         self.image.save(path, "PNG")
 
+    def __call__(self):
+        return self.get_post()
+
 
 def main():
     bounding_box = [70, 200, 1280, 1150]
     msg = "Sample message.\n This is seriously a sample message. You will not find any info here whatsoever!"
-    post = Post(msg, bounding_box=bounding_box, font_size=70, padding=10)
+    post = Post(" \nf", bounding_box=bounding_box, font_size=70, padding=10)
     post.show()
-    post.save()
 
 
 if(__name__ == "__main__"):
