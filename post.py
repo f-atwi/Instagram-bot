@@ -76,6 +76,8 @@ class Post:
             self.image.show()
 
     def save(self):
+        if not os.path.exists("posts"):
+            os.mkdir("posts")
         i = 0
         while os.path.exists(f"posts/post_{i}.png"):
             i += 1
