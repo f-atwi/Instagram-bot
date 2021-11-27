@@ -16,8 +16,10 @@ class Bot:
     def __init__(self, credentials_file_path: Path, settings_file_path: Path):
         self.api = Bot._login(
             Path(credentials_file_path+'.json'), Path(settings_file_path))
+
     def __call__(self):
         return self.api
+
     def _to_json(python_object):
         if isinstance(python_object, bytes):
             return {'__class__': 'bytes',
