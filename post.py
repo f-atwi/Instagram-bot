@@ -6,7 +6,6 @@ from textwrap import wrap
 import logging
 from pathlib import Path
 from glob import glob
-from instagram_private_api import Client
 logging.basicConfig(
     format='%(asctime)s: %(funcName)s: %(levelname)s: %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,45 +17,47 @@ class Post:
             size=1350, template=None,
             bounding_box=None,
             padding=0,
-            font_file_path=None,
+            font_file_path='',
             font_size=12
     ) -> None:
-        self.image = self._load_image(template)
-        self.font = self._define_font(
-            None if font_file_path is None else Path(font_file_path), font_size)
-        self.bounding_box = self._define_bounding_box(bounding_box, size)
-        self.message = self._format_message(bounding_box, message, self.font)
+        self.image = Post._load_image(template)
+        self.font = Post._define_font(Path(font_file_path), font_size)
+        self.font_size = font_size
+        self.bounding_box = Post._define_bounding_box(bounding_box, size)
+        self.message = self._format_message(message)
         if self._is_text():
-            self._X, self._Y = self._center(
-                bounding_box, len(self.message), font_size)
-            self.leading = font_size+padding
+            self._X, self._Y = self._center()
+            self.leading = self.font_size+padding
             self._draw()
 
-    def _define_bounding_box(self, bounding_box, size) -> List:
+    def _define_bounding_box(bounding_box, size) -> List:
         if bounding_box is None:
             bounding_box = [0.05*size, 0.1*size, 0.95*size, 0.9*size]
         return bounding_box
 
-    def _format_message(self, bounding_box, message, font):
+    def _format_message(self, message):
         pars = [' '.join(par.split())
                 for par in message.split('\n') if par.strip()]
         if pars and all(pars):
-            width = bounding_box[2]-bounding_box[0]
+            width = self.bounding_box[2]-self.bounding_box[0]
             max_size = ' '
             i = 1
             while True:
                 longest = max([max(wrap(par, i), key=len)
                                for par in pars], key=len)
-                if font.getsize(longest)[0] > width or font.getsize(max_size)[0] > width:
+                if (self.font.getsize(longest)[0] > width) or \
+                        (self.font.getsize(max_size)[0] > width):
                     return [line for par in pars for line in wrap(par, i-2)]
                 i += 1
                 max_size += ' '
         return []
 
-    def _center(self, bounding_box, lines, font_size) -> tuple[int, int]:
-        X = (bounding_box[2] - bounding_box[0])/2 + bounding_box[0]
-        Y = (bounding_box[3] - bounding_box[1])/2 + \
-            bounding_box[1] - (lines-1)*font_size/2
+    def _center(self) -> tuple[int, int]:
+        lines = len(self.message)
+        X = (self.bounding_box[2] - self.bounding_box[0]
+             )/2 + self.bounding_box[0]
+        Y = (self.bounding_box[3] - self.bounding_box[1]) / \
+            2 + self.bounding_box[1] - (lines-1)*self.font_size/2
         return X, Y
 
     def _is_text(self) -> bool:
@@ -70,7 +71,7 @@ class Post:
             return False
         return True
 
-    def _load_image(self, template):
+    def _load_image(template):
         if template is None:
             try:
                 return Image.open(glob('*.png')[0])
@@ -83,9 +84,10 @@ class Post:
             except OSError:
                 logger.error
 
-    def _define_font(self, path, font_size):
-        if path is None:
+    def _define_font(path: Path, font_size):
+        if path.suffix != '.ttf':
             try:
+                logger.info("Searching for font in directory")
                 return ImageFont.truetype(glob('*.ttf')[0], size=font_size)
             except IndexError:
                 logger.error("No font found")
@@ -129,7 +131,8 @@ class Post:
 def main():
     bounding_box = [70, 200, 1280, 1150]
     msg = "Sample message.\n This is seriously a sample message. You will not find any info here whatsoever!"
-    post = Post(" \nf", bounding_box=bounding_box, font_size=70, padding=10)
+    post = Post(msg, bounding_box=bounding_box,
+                font_size=70, padding=10)
     post.show()
 
 
