@@ -32,9 +32,12 @@ def onlogin_callback(api, new_settings_file):
 
 
 def parseArgs():
-    parser = argparse.ArgumentParser(description='login callback and save settings demo')
-    parser.add_argument('-settings', '--settings', dest='settings_file_path', type=str, required=True)
-    parser.add_argument('-c', '--credentials', dest='credentials_file_path', type=str, required=True)
+    parser = argparse.ArgumentParser(
+        description='login callback and save settings demo')
+    parser.add_argument('-settings', '--settings',
+                        dest='settings_file_path', type=str, required=True)
+    parser.add_argument('-c', '--credentials',
+                        dest='credentials_file_path', type=str, required=True)
     parser.add_argument('-debug', '--debug', action='store_true')
     return parser.parse_args()
 
@@ -51,7 +54,8 @@ def loginUsingSetting(args):
             settings_file = args.settings_file_path
             if not os.path.isfile(settings_file):
                 # settings file does not exist
-                logger.warning('Unable to find file: {0!s}'.format(settings_file))
+                logger.warning(
+                    'Unable to find file: {0!s}'.format(settings_file))
 
                 # login new
                 return Client(
@@ -59,7 +63,8 @@ def loginUsingSetting(args):
                     on_login=lambda x: onlogin_callback(x, args.settings_file_path))
             else:
                 with open(settings_file) as file_data:
-                    cached_settings = json.load(file_data, object_hook=from_json)
+                    cached_settings = json.load(
+                        file_data, object_hook=from_json)
                 logger.info('Reusing settings: {0!s}'.format(settings_file))
 
                 device_id = cached_settings.get('device_id')
@@ -69,7 +74,8 @@ def loginUsingSetting(args):
                     settings=cached_settings)
 
         except (ClientCookieExpiredError, ClientLoginRequiredError) as e:
-            logger.warning('ClientCookieExpiredError/ClientLoginRequiredError: {0!s}'.format(e))
+            logger.warning(
+                'ClientCookieExpiredError/ClientLoginRequiredError: {0!s}'.format(e))
 
             # Login expired
             # Do relogin but use default ua, keys and such
@@ -82,7 +88,8 @@ def loginUsingSetting(args):
             logger.error('ClientLoginError {0!s}'.format(e))
             exit(9)
         except ClientError as e:
-            logger.error('ClientError {0!s} (Code: {1:d}, Response: {2!s})'.format(e.msg, e.code, e.error_response))
+            logger.error('ClientError {0!s} (Code: {1:d}, Response: {2!s})'.format(
+                e.msg, e.code, e.error_response))
             exit(9)
         except Exception as e:
             logger.error('Unexpected Exception: {0!s}'.format(e))
@@ -96,19 +103,17 @@ def main():
     logger.info('Client version: {0}'.format(client_version))
     device_id = None
     api = loginUsingSetting(args)
-    
 
     # Show when login expires
     cookie_expiry = api.cookie_jar.auth_expires
-    logger.info('Cookie Expiry: {0!s}'.format(datetime.datetime.fromtimestamp(cookie_expiry).strftime('%Y-%m-%d at %H:%M:%S')))
+    logger.info('Cookie Expiry: {0!s}'.format(datetime.datetime.fromtimestamp(
+        cookie_expiry).strftime('%Y-%m-%d at %H:%M:%S')))
+    return api
 
-
-logger = logging
-logger_format = '%(asctime)s: %(funcName)s: %(levelname)s: %(message)s'
-logger.basicConfig(format=logger_format, level=logging.INFO)
-
+logging.basicConfig(
+    format='%(asctime)s: %(funcName)s: %(levelname)s: %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 if __name__ == '__main__':
     main()
-
